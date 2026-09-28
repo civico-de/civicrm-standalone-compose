@@ -1,18 +1,19 @@
 # civicrm-compose
 
-CiviCRM Standalone with Docker Compose, built only from official images: `civicrm/civicrm`,
-`mariadb` and `caddy`. One command installs CiviCRM in the language you choose, serves it
-over HTTPS, runs the scheduled jobs and opens exactly the public routes you enable. Two
-scripts write and restore backups.
+Self-host CiviCRM Standalone with Docker Compose. One command installs CiviCRM in the
+language you choose, serves it over HTTPS, runs the scheduled jobs and opens exactly the
+public routes you enable. Two scripts write and restore backups.
 
-It is meant to be read. Every file is short, and nothing is built.
+There is no image of its own and no build step: the setup is a Compose file, some Caddy and
+Apache configuration and two shell scripts on top of the `civicrm/civicrm`, `mariadb` and
+`caddy` images.
 
 ## Quick start
 
 You need a server with Docker, a DNS name pointing at it and ports 80 and 443 open.
 
 ```sh
-git clone <this repository> civicrm && cd civicrm
+git clone https://github.com/civico-de/civicrm-compose.git civicrm && cd civicrm
 cp .env.example .env
 $EDITOR .env                  # DOMAIN, ADMIN_IPS, ADMIN_PASSWORD, DB_PASSWORD
 docker compose up -d
@@ -100,9 +101,10 @@ of step with the database.
 
 `./restore.sh backups/<timestamp>` reads both archives completely and dumps the current
 database to `backups/pre-restore-<timestamp>.sql.gz`, so data entered since the backup is not
-lost for good. Files uploaded since the backup are replaced without a copy. Then it stops CiviCRM, replaces the database and the files, starts it again and
-flushes the caches. If a step fails, CiviCRM stays stopped and the script says why. When the
-current database cannot be dumped at all, `SKIP_PRE_RESTORE_DUMP=1` skips that step.
+lost for good. Files uploaded since the backup are replaced without a copy. Then it stops
+CiviCRM, replaces the database and the files, starts it again and flushes the caches. If a
+step fails, CiviCRM stays stopped and the script says why. When the current database cannot
+be dumped at all, `SKIP_PRE_RESTORE_DUMP=1` skips that step.
 
 The backups stay on the same server. Copy `backups/` somewhere else, together with `.env`:
 the restored settings file expects the same `DOMAIN` and `DB_PASSWORD`.
@@ -118,7 +120,9 @@ docker compose run --rm --no-deps --user www-data app cv upgrade:db
 docker compose up -d
 ```
 
-Read the release notes before you change the minor line, and move one line at a time.
+For a patch release, skip the edit: `pull` fetches the newest patch of your minor line, and
+`cv upgrade:db` does nothing when no database change is due. Read the release notes before
+you change the minor line, and move one line at a time.
 
 ## Tests
 
@@ -131,7 +135,7 @@ checks:
 - every profile, switched on and off, with an anonymous visitor, who submits a form,
   registers for an event and makes a donation;
 - the API with a valid key, a wrong key and malformed headers;
-- Secure cookies;
+- cookies marked Secure;
 - a backup and restore round trip.
 
 `tests/fixtures.php` creates the records these checks use. The script
@@ -145,9 +149,9 @@ risk.
 
 Keeping it up to date is your job. Nothing updates itself: CiviCRM security releases and
 new versions of MariaDB and Caddy reach your server only when you run the steps under
-[Upgrades](#upgrades), for a patch release with `CIVICRM_VERSION` unchanged. Follow
-[CiviCRM's security announcements](https://civicrm.org/security) to know when one is due.
-The server's operating system, Docker and firewall are yours to maintain as well.
+[Upgrades](#upgrades). Follow [CiviCRM's security announcements](https://civicrm.org/security)
+to know when one is due. The server's operating system, Docker and firewall are yours to
+maintain as well.
 
 It is also deliberately basic. It does not copy backups off the server, test restores,
 watch the instance, filter request bodies, put the back office behind a VPN, or rehearse
