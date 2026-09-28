@@ -73,8 +73,9 @@ Everything is in `.env`. Compose refuses to start while a required value is miss
 writes `DOMAIN` and `DB_PASSWORD` into `private/civicrm.settings.php`. To change either
 later, edit that file as well.
 
-CiviCRM keeps its caches in files, not in the database. [docs/caching.md](docs/caching.md)
-explains why and how to go back.
+PHP settings and CiviCRM constants that `.env` does not cover live in `php/`, see
+[docs/php.md](docs/php.md). One of them makes CiviCRM keep its caches in files, not in the
+database; [docs/caching.md](docs/caching.md) explains why.
 
 ## Public access
 
@@ -164,6 +165,7 @@ For production data, work with an experienced hosting partner such as
 | File | Covers |
 |---|---|
 | [docs/profiles.md](docs/profiles.md) | Each public profile, what to set up in CiviCRM for it, and how to write and test your own |
+| [docs/php.md](docs/php.md) | The two files in `php/`: PHP settings and CiviCRM constants beyond `.env` |
 | [docs/caching.md](docs/caching.md) | Why CiviCRM caches in files, the known bugs of both cache backends, and how to go back |
 | [docs/backups.md](docs/backups.md) | What backups hold, each step of restore and upgrade, and moving MariaDB to a new LTS line |
 | [docs/testing.md](docs/testing.md) | What the tests check, their options, and what runs in CI |

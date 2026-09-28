@@ -23,13 +23,11 @@ Redis avoids both, at the price of another service to run and back up.
 ## How it is set
 
 CiviCRM reads the cache backend only from the PHP constant `CIVICRM_DB_CACHE_CLASS`, not from
-the environment. `php/filecache.php` defines it, and `php/filecache.ini` loads that file
-before every PHP request and every `cv` call, through PHP's `auto_prepend_file`. The settings
-file CiviCRM wrote at installation defines the constant only when it is still undefined, so
-it stays as it is, and the setting applies to existing installations as well.
-
-`backup.sh` leaves `private/filecache` out; `restore.sh` flushes the caches anyway.
+the environment, so `php/constants.php` defines it (see [php.md](php.md)). The settings file
+CiviCRM wrote at installation keeps that value, and it applies to existing installations as
+well. `backup.sh` leaves `private/filecache` out; `restore.sh` flushes the caches anyway.
 
 ## Going back to the database cache
 
-Delete the two lines that mount `php/` in `compose.yaml` and run `docker compose up -d`.
+Delete the `CIVICRM_DB_CACHE_CLASS` line from `php/constants.php` and run
+`docker compose restart app cron`.

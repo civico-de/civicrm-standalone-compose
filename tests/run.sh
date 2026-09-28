@@ -33,7 +33,9 @@ cv() { docker compose exec -T --user www-data app cv "$@"; }
 route() {
   local status args=(-sk --path-as-is -X "${2:-GET}" -H 'X-Requested-With: XMLHttpRequest')
   [ -z "${3:-}" ] || args+=(-H "$3")
-  status=$(curl "${args[@]}" -o "$body" -w '%{http_code}' "$base$1")
+  # Without an HTTP answer, curl's error message follows the status 000.
+  status=$(curl "${args[@]}" -o "$body" -w '%{http_code} %{errormsg}' "$base$1") || true
+  status=${status% }
   if [ "$status" = 403 ] && [ "$(cat "$body")" = Forbidden ]; then echo blocked; else echo "$status"; fi
 }
 # Opens a CiviCRM form as a new visitor, submits it with the given field=value pairs and
