@@ -9,6 +9,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The tag names an LTS line and brings its patches on every pull. Most newer lines are
+      # short-term releases, so moving to the next LTS stays a decision made in compose.yaml.
+      - dependency-name: mariadb
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

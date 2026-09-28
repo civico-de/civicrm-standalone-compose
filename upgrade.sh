@@ -18,7 +18,8 @@ trap 'cp "$backup/env" "$env_file"; echo "Could not pull the images. Nothing cha
 docker compose pull
 trap 'echo "Upgrade failed. CiviCRM stays stopped. To go back to the version before, run ./restore.sh $backup" >&2' ERR
 docker compose stop app cron
-docker compose run --rm --no-deps -T --user www-data app cv upgrade:db
+# Prints the pre-upgrade messages, but does not wait for an answer while CiviCRM is stopped.
+docker compose run --rm --no-deps -T --user www-data app cv upgrade:db --no-interaction
 trap - ERR
 
 docker compose up --detach --wait

@@ -21,6 +21,8 @@ x-civicrm: &civicrm
 
 services:
   db:
+    # An LTS line (supported until 2029). Before moving to the next LTS, run
+    # MARIADB_FROM=<current line> tests/upgrade.sh with the new tag here.
     image: mariadb:11.4
     restart: unless-stopped
     environment:
@@ -28,6 +30,8 @@ services:
       MARIADB_USER: civicrm
       MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
       MARIADB_RANDOM_ROOT_PASSWORD: "1"
+      # After a newer MariaDB image, updates the system tables; without it mariadb-dump fails.
+      MARIADB_AUTO_UPGRADE: "1"
     volumes:
       - db:/var/lib/mysql
     healthcheck:
