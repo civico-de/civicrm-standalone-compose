@@ -11,8 +11,10 @@ Apache and PHP configuration and three shell scripts on top of the `civicrm/civi
 ## Why Standalone
 
 Standalone is CiviCRM without a content management system: no Drupal, WordPress, Joomla or
-Backdrop underneath. CiviCRM 6.0 counts it among the parts that have stabilised, and it is
-where CiviCRM is heading:
+Backdrop underneath. That takes a large attack surface out of the stack. A CMS brings its own
+logins, plugins and themes, each with its own security releases: in 2025 alone,
+[Patchstack counted 11,334 new vulnerabilities](https://patchstack.com/whitepaper/state-of-wordpress-security-in-2026/)
+in the WordPress ecosystem, 91% of them in plugins. With Standalone:
 
 - One system to run and patch instead of two, with no CMS updates, modules or conflicts
   between two release cycles.
@@ -20,11 +22,11 @@ where CiviCRM is heading:
 - Public forms, event registration and donation pages come from FormBuilder and CiviCRM
   itself.
 - Upgrades are supported, and regressions are fixed as on the CMS versions.
-- The official `civicrm/civicrm` Docker image is Standalone.
+- It is what the official `civicrm/civicrm` Docker image ships.
 
 Your website runs separately on its own CMS and usually exchanges data with CiviCRM through
-APIv4 (see the `api` profile below). Sign-up, event and donation forms can also come straight
-from CiviCRM.
+APIv4 (see the `api` profile below), so a hole in the website no longer sits next to your
+contact data. Sign-up, event and donation forms can also come straight from CiviCRM.
 
 ## Quick start
 
