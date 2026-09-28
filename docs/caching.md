@@ -27,6 +27,9 @@ the environment, so `php/constants.php` defines it (see [php.md](php.md)). The s
 CiviCRM wrote at installation keeps that value, and it applies to existing installations as
 well. `backup.sh` leaves `private/filecache` out; `restore.sh` flushes the caches anyway.
 
+Each cache directory carries the CiviCRM version in its name, so an upgraded CiviCRM starts
+with an empty cache. The older version's directories stay behind unused and can be deleted.
+
 ## Going back to the database cache
 
 Delete the `CIVICRM_DB_CACHE_CLASS` line from `php/constants.php` and run

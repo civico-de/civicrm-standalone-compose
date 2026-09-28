@@ -38,11 +38,17 @@ db_server() { docker compose exec -T db mariadb --version | grep -o '[0-9]*\.[0-
 on_line() { grep -c "^$1\." <<< "$2" || true; }
 event_list() { curl -sk -o /dev/null -w '%{http_code}' https://localhost:8443/civicrm/event/list; }
 backup_of() { sed -n 's/^Backup written to //p' <<< "$1"; }
+# Each file cache entry with its modification time, sorted.
+cache_files() { docker compose exec -T app find private/filecache -name '*.txt' -printf '%P %T@\n' | sort; }
 
 COMPOSE_FILE=$COMPOSE_FILE:$older_db docker compose up --detach --wait
 read -r db_version code_version <<< "$(versions)"
 check "installed the older line $from" 1 "$(on_line "$from" "$code_version")"
+from_version=$code_version
 check "installed MariaDB $db_from" 1 "$(on_line "$db_from" "$(db_server)")"
+event_list > /dev/null
+cache_before=$(cache_files)
+check "the older line fills the file cache" 1 "$(grep -q . <<< "$cache_before" && echo 1)"
 
 stopped=""
 refused=$(./upgrade.sh no-such-version 2> /dev/null) || stopped=1
@@ -61,6 +67,9 @@ check "code runs the pinned line $to" 1 "$(on_line "$to" "$code_version")"
 check "database matches the code" "$code_version" "$db_version"
 check "MariaDB runs $db_to" 1 "$(on_line "$db_to" "$(db_server)")"
 check "cron runs the new image" 1 "$(on_line "$to" "$(docker compose exec -T cron cv php:eval 'echo CRM_Utils_System::version();')")"
+# CiviCRM names each cache group after its version, so the new one reads none of the old entries.
+check "the new version reads no file cache entry of the older one" 0 \
+  "$(comm -12 <(echo "$cache_before") <(cache_files) | grep -vc "^[^/ ]*_${from_version//./_}/" || true)"
 check "CiviCRM answers after the upgrade" 200 "$(event_list)"
 
 read -r _ _ _ pre_restore_db _ pre_restore_env <<< "$(./restore.sh "$backup" | grep '^Before the restore: ')"
