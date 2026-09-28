@@ -18,6 +18,8 @@ x-civicrm: &civicrm
     - public:/var/www/html/public
     - ext:/var/www/html/ext
     - ./apache/https.conf:/etc/apache2/conf-enabled/zz-https.conf:ro
+    - ./php/filecache.ini:/usr/local/etc/php/conf.d/zz-filecache.ini:ro
+    - ./php/filecache.php:/usr/local/etc/php/filecache.php:ro
 
 services:
   db:

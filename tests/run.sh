@@ -63,6 +63,16 @@ check "cron container finished a run" 1 "$(grep -q 'cron run finished' <<< "$cro
 check "cron container reports no failure" 0 "$(grep -c 'cron run failed' <<< "$cron_log" || true)"
 check "scheduled jobs wrote a log" 1 "$(cv api4 JobLog.get '{"select":["id"],"where":[["name","=","CiviCRM Update Check"]],"limit":1}' | grep -c '"id"')"
 
+check "cv uses the file cache" FileCache "$(cv ev 'echo CIVICRM_DB_CACHE_CLASS;')"
+check "cron uses the file cache" FileCache "$(docker compose exec -T cron cv ev 'echo CIVICRM_DB_CACHE_CLASS;')"
+# With cron paused, only the web request can fill the emptied cache directory.
+docker compose pause cron > /dev/null
+docker compose exec -T --user www-data app rm -rf private/filecache
+route /civicrm/event/list > /dev/null
+check "the web server uses the file cache" 1 \
+  "$(docker compose exec -T app find private/filecache -name '*.txt' | grep -q . && echo 1)"
+docker compose unpause cron > /dev/null
+
 cv api4 Afform.create --in=json < tests/afform.json > /dev/null
 docker compose cp tests/fixtures.php app:/tmp/fixtures.php
 read -r event page processor price_field price_option self_service recur_link api_contact \
@@ -169,6 +179,7 @@ docker compose up --detach --wait caddy
 before=$(signups)
 backup=$(./backup.sh)
 check "the backup holds the settings" "" "$(diff "$backup/env" tests/test.env)"
+check "the backup leaves out the file cache" 0 "$(tar -tzf "$backup/files.tar.gz" | grep -c '^private/filecache' || true)"
 cv api4 Contact.create '{"values":{"contact_type":"Individual","first_name":"After","last_name":"Backup","source":"test-signup"}}' > /dev/null
 echo "# changed after the backup" >> tests/test.env
 broken="$backup-broken" && mkdir "$broken" && cp "$backup/files.tar.gz" "$backup/env" "$broken/"

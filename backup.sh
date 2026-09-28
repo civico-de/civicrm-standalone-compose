@@ -15,7 +15,7 @@ trap 'rm -rf "$target"; echo "Backup failed, nothing kept." >&2; exit 1' ERR INT
 docker compose exec -T db sh -c \
   'MYSQL_PWD="$MARIADB_PASSWORD" mariadb-dump --single-transaction --routines --triggers -u "$MARIADB_USER" "$MARIADB_DATABASE"' \
   | gzip > "$target/database.sql.gz"
-docker compose exec -T app tar -C /var/www/html --exclude=private/cache --exclude=private/tmp \
+docker compose exec -T app tar -C /var/www/html --exclude=private/cache --exclude=private/filecache --exclude=private/tmp \
   -czf - private public ext > "$target/files.tar.gz"
 # CIVICRM_VERSION in it names the code the dump belongs to. COMPOSE_ENV_FILES is set by the tests.
 cp "${COMPOSE_ENV_FILES:-.env}" "$target/env"

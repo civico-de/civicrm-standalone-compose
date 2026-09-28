@@ -4,9 +4,27 @@ Self-host CiviCRM Standalone with Docker Compose. One command installs CiviCRM i
 language you choose, serves it over HTTPS, runs the scheduled jobs and opens exactly the
 public routes you enable. Three scripts write and restore backups and upgrade CiviCRM.
 
-There is no image of its own and no build step: the setup is a Compose file, some Caddy and
-Apache configuration and three shell scripts on top of the `civicrm/civicrm`, `mariadb` and
-`caddy` images.
+There is no image of its own and no build step: the setup is a Compose file, some Caddy,
+Apache and PHP configuration and three shell scripts on top of the `civicrm/civicrm`,
+`mariadb` and `caddy` images.
+
+## Why Standalone
+
+Standalone is CiviCRM without a content management system: no Drupal, WordPress, Joomla or
+Backdrop underneath. CiviCRM 6.0 counts it among the parts that have stabilised, and it is
+where CiviCRM is heading:
+
+- One system to run and patch instead of two, with no CMS updates, modules or conflicts
+  between two release cycles.
+- Users, roles, permissions and two-factor login are built in.
+- Public forms, event registration and donation pages come from FormBuilder and CiviCRM
+  itself.
+- Upgrades are supported, and regressions are fixed as on the CMS versions.
+- The official `civicrm/civicrm` Docker image is Standalone.
+
+Your website runs separately on its own CMS and usually exchanges data with CiviCRM through
+APIv4 (see the `api` profile below). Sign-up, event and donation forms can also come straight
+from CiviCRM.
 
 ## Quick start
 
@@ -53,6 +71,9 @@ Everything is in `.env`. Compose refuses to start while a required value is miss
 writes `DOMAIN` and `DB_PASSWORD` into `private/civicrm.settings.php`. To change either
 later, edit that file as well.
 
+CiviCRM keeps its caches in files, not in the database. [docs/caching.md](docs/caching.md)
+explains why and how to go back.
+
 ## Public access
 
 Caddy lets through the static files and the routes of the profiles in `PUBLIC_PROFILES`.
@@ -86,26 +107,15 @@ docker compose up -d                                 # after editing .env
 
 ### Backups
 
-`./backup.sh` writes `backups/<timestamp>/` with `database.sql.gz`, `files.tar.gz`
-(`private`, `public`, `ext`) and `env`, a copy of `.env`, and deletes backups older than 14 days (`KEEP_DAYS`). If a
-step fails, nothing is kept and the script exits non-zero. Run it nightly from the host's
-crontab:
+`./backup.sh` writes the database, the files and a copy of `.env` to `backups/<timestamp>/`
+and deletes backups older than 14 days. Run it nightly from the host's crontab:
 
 ```
 30 2 * * * cd /path/to/civicrm && ./backup.sh > /dev/null
 ```
 
-CiviCRM keeps running during a backup. The database is dumped first and the files are
-archived right after, so an upload or deletion in those seconds can leave one attachment out
-of step with the database.
-
-`./restore.sh backups/<timestamp>` reads both archives completely and keeps the current
-database and `.env` as `backups/pre-restore-<timestamp>.sql.gz` and `.env`, so data entered
-since the backup is not lost for good. Files uploaded since the backup are replaced without a
-copy. Then it stops CiviCRM, replaces the database, the files and `.env`, starts CiviCRM again
-with the images that `.env` names and flushes the caches. If a
-step fails, CiviCRM stays stopped and the script says why. When the current database cannot
-be dumped at all, `SKIP_PRE_RESTORE_DUMP=1` skips that step.
+`./restore.sh backups/<timestamp>` puts all three back and keeps the state it replaces in
+`backups/pre-restore-<timestamp>.*`.
 
 The backups stay on the same server. Copy `backups/` somewhere else, and keep that copy as
 safe as `.env` itself: every backup holds its passwords.
@@ -117,36 +127,16 @@ safe as `.env` itself: every backup holds its passwords.
 ./upgrade.sh 6.19     # the next minor line
 ```
 
-`upgrade.sh` writes a backup, sets `CIVICRM_VERSION` in `.env` if you name a line, and pulls
-the images. If an image cannot be pulled, it puts `.env` back and stops; CiviCRM keeps
-running. Otherwise it stops CiviCRM, updates the database with `cv upgrade:db` and starts
-everything again. If the database update fails, CiviCRM stays stopped. Either way the script
-names the backup that `./restore.sh` takes you back to the version before.
-
-Change `CIVICRM_VERSION` through `upgrade.sh` rather than by hand, so each backup records the
-version its database belongs to. Read the release notes before you change the minor line, and
-move one line at a time.
+`upgrade.sh` writes a backup first, then pulls the images and updates the database while
+CiviCRM is stopped. It names the backup that `./restore.sh` takes you back with. Change
+`CIVICRM_VERSION` through `upgrade.sh` rather than by hand, read the release notes before you
+change the minor line, and move one line at a time.
 
 ## Tests
 
-`tests/run.sh` starts the stack on `https://localhost:8443` with `tests/test.env`, then
-checks:
-
-- the install, the language and the cron container;
-- blocked and open routes, including path and encoding tricks;
-- the scripts and styles a public form references;
-- every profile, switched on and off, with an anonymous visitor, who submits a form,
-  registers for an event and makes a donation;
-- the API with a valid key, a wrong key and malformed headers;
-- cookies marked Secure;
-- a backup and restore round trip.
-
-`tests/fixtures.php` creates the records these checks use. `tests/upgrade.sh` installs the
-minor line before the pinned one, upgrades it with `upgrade.sh` and goes back with
-`restore.sh`. Both scripts remove their containers and volumes afterwards.
-
-GitHub Actions runs them on every push and weekly, against the pinned `CIVICRM_VERSION` and
-against `latest`. Dependabot proposes newer versions of the other images and of the actions.
+`tests/run.sh` checks the whole setup end to end on `https://localhost:8443`, from the install
+through every profile to a backup and restore. `tests/upgrade.sh` upgrades from the previous
+minor line and goes back. GitHub Actions runs both on every push and weekly.
 
 ## No warranty: running it is up to you
 
@@ -166,6 +156,15 @@ upgrades on a copy of the data first.
 
 For production data, work with an experienced hosting partner such as
 [civico](https://civico.de), who takes care of all of this for you.
+
+## Documentation
+
+| File | Covers |
+|---|---|
+| [docs/profiles.md](docs/profiles.md) | Each public profile, what to set up in CiviCRM for it, and how to write and test your own |
+| [docs/caching.md](docs/caching.md) | Why CiviCRM caches in files, the known bugs of both cache backends, and how to go back |
+| [docs/backups.md](docs/backups.md) | What backups hold, each step of restore and upgrade, and moving MariaDB to a new LTS line |
+| [docs/testing.md](docs/testing.md) | What the tests check, their options, and what runs in CI |
 
 ## License
 
