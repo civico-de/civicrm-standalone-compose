@@ -1,11 +1,11 @@
-# civicrm-compose
+# civicrm-standalone-compose
 
 Self-host CiviCRM Standalone with Docker Compose. One command installs CiviCRM in the
 language you choose, serves it over HTTPS, runs the scheduled jobs and opens exactly the
-public routes you enable. Two scripts write and restore backups.
+public routes you enable. Three scripts write and restore backups and upgrade CiviCRM.
 
 There is no image of its own and no build step: the setup is a Compose file, some Caddy and
-Apache configuration and two shell scripts on top of the `civicrm/civicrm`, `mariadb` and
+Apache configuration and three shell scripts on top of the `civicrm/civicrm`, `mariadb` and
 `caddy` images.
 
 ## Quick start
@@ -13,7 +13,7 @@ Apache configuration and two shell scripts on top of the `civicrm/civicrm`, `mar
 You need a server with Docker, a DNS name pointing at it and ports 80 and 443 open.
 
 ```sh
-git clone https://github.com/civico-de/civicrm-compose.git civicrm && cd civicrm
+git clone https://github.com/civico-de/civicrm-standalone-compose.git civicrm && cd civicrm
 cp .env.example .env
 $EDITOR .env                  # DOMAIN, ADMIN_IPS, ADMIN_PASSWORD, DB_PASSWORD
 docker compose up -d
@@ -86,8 +86,8 @@ docker compose up -d                                 # after editing .env
 
 ### Backups
 
-`./backup.sh` writes `backups/<timestamp>/` with `database.sql.gz` and `files.tar.gz`
-(`private`, `public`, `ext`) and deletes backups older than 14 days (`KEEP_DAYS`). If a
+`./backup.sh` writes `backups/<timestamp>/` with `database.sql.gz`, `files.tar.gz`
+(`private`, `public`, `ext`) and `env`, a copy of `.env`, and deletes backups older than 14 days (`KEEP_DAYS`). If a
 step fails, nothing is kept and the script exits non-zero. Run it nightly from the host's
 crontab:
 
@@ -99,30 +99,33 @@ CiviCRM keeps running during a backup. The database is dumped first and the file
 archived right after, so an upload or deletion in those seconds can leave one attachment out
 of step with the database.
 
-`./restore.sh backups/<timestamp>` reads both archives completely and dumps the current
-database to `backups/pre-restore-<timestamp>.sql.gz`, so data entered since the backup is not
-lost for good. Files uploaded since the backup are replaced without a copy. Then it stops
-CiviCRM, replaces the database and the files, starts it again and flushes the caches. If a
+`./restore.sh backups/<timestamp>` reads both archives completely and keeps the current
+database and `.env` as `backups/pre-restore-<timestamp>.sql.gz` and `.env`, so data entered
+since the backup is not lost for good. Files uploaded since the backup are replaced without a
+copy. Then it stops CiviCRM, replaces the database, the files and `.env`, starts CiviCRM again
+with the images that `.env` names and flushes the caches. If a
 step fails, CiviCRM stays stopped and the script says why. When the current database cannot
 be dumped at all, `SKIP_PRE_RESTORE_DUMP=1` skips that step.
 
-The backups stay on the same server. Copy `backups/` somewhere else, together with `.env`:
-the restored settings file expects the same `DOMAIN` and `DB_PASSWORD`.
+The backups stay on the same server. Copy `backups/` somewhere else, and keep that copy as
+safe as `.env` itself: every backup holds its passwords.
 
 ### Upgrades
 
 ```sh
-./backup.sh
-$EDITOR .env                                         # CIVICRM_VERSION=<next minor>
-docker compose pull
-docker compose stop app cron                         # no requests against the old schema
-docker compose run --rm --no-deps --user www-data app cv upgrade:db
-docker compose up -d
+./upgrade.sh          # newest patch of the minor line in .env
+./upgrade.sh 6.19     # the next minor line
 ```
 
-For a patch release, skip the edit: `pull` fetches the newest patch of your minor line, and
-`cv upgrade:db` does nothing when no database change is due. Read the release notes before
-you change the minor line, and move one line at a time.
+`upgrade.sh` writes a backup, sets `CIVICRM_VERSION` in `.env` if you name a line, and pulls
+the images. If an image cannot be pulled, it puts `.env` back and stops; CiviCRM keeps
+running. Otherwise it stops CiviCRM, updates the database with `cv upgrade:db` and starts
+everything again. If the database update fails, CiviCRM stays stopped. Either way the script
+names the backup that `./restore.sh` takes you back to the version before.
+
+Change `CIVICRM_VERSION` through `upgrade.sh` rather than by hand, so each backup records the
+version its database belongs to. Read the release notes before you change the minor line, and
+move one line at a time.
 
 ## Tests
 
@@ -138,8 +141,12 @@ checks:
 - cookies marked Secure;
 - a backup and restore round trip.
 
-`tests/fixtures.php` creates the records these checks use. The script
-removes its containers and volumes afterwards.
+`tests/fixtures.php` creates the records these checks use. `tests/upgrade.sh` installs the
+minor line before the pinned one, upgrades it with `upgrade.sh` and goes back with
+`restore.sh`. Both scripts remove their containers and volumes afterwards.
+
+GitHub Actions runs them on every push and weekly, against the pinned `CIVICRM_VERSION` and
+against `latest`. Dependabot proposes newer versions of the other images and of the actions.
 
 ## No warranty: running it is up to you
 
@@ -148,8 +155,8 @@ the law allows. Sections 15 and 16 of the [license](LICENSE) apply. You run it a
 risk.
 
 Keeping it up to date is your job. Nothing updates itself: CiviCRM security releases and
-new versions of MariaDB and Caddy reach your server only when you run the steps under
-[Upgrades](#upgrades). Follow [CiviCRM's security announcements](https://civicrm.org/security)
+new versions of MariaDB and Caddy reach your server only when you run `./upgrade.sh`
+(see [Upgrades](#upgrades)). Follow [CiviCRM's security announcements](https://civicrm.org/security)
 to know when one is due. The server's operating system, Docker and firewall are yours to
 maintain as well.
 
@@ -162,4 +169,5 @@ For production data, work with an experienced hosting partner such as
 
 ## License
 
-[AGPL-3.0](LICENSE)
+Copyright © 2026 civico GmbH. Licensed under the [GNU Affero General Public License
+v3.0 or later](LICENSE).

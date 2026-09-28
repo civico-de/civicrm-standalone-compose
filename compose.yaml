@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # CiviCRM Standalone on the official images. Settings live in .env (see .env.example).
 
 x-civicrm: &civicrm

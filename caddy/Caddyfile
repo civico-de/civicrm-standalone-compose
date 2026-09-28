@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Public entry point. Anyone reaches the static files and the routes of the profiles named
 # in PUBLIC_PROFILES; everything else (login, back office, APIv3) answers only to ADMIN_IPS.
 {$DOMAIN} {

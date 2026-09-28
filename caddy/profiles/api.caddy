@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # APIv4 for other systems. Only requests with an "X-Civi-Auth: Bearer <API key>" header pass;
 # CiviCRM checks the key and runs the call with the permissions of the user it belongs to.
 @api {

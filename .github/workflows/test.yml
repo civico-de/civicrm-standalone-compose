@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Weekly, because the image tags move: new patch releases arrive without a commit here.
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: shellcheck backup.sh restore.sh upgrade.sh tests/run.sh tests/upgrade.sh
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # "pinned" uses CIVICRM_VERSION from tests/test.env; "latest" shows a new minor line early.
+        civicrm: [pinned, latest]
+    name: e2e (${{ matrix.civicrm }})
+    steps:
+      - uses: actions/checkout@v7
+      - name: tests/run.sh
+        env:
+          CIVICRM: ${{ matrix.civicrm }}
+        run: |
+          if [ "$CIVICRM" != pinned ]; then export CIVICRM_VERSION="$CIVICRM"; fi
+          tests/run.sh
+
+  upgrade:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - run: tests/upgrade.sh

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Writes backups/<timestamp>/ with a database dump and the private, public and ext files,
-# then deletes backups older than KEEP_DAYS (default 14). Usage: ./backup.sh
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Writes backups/<timestamp>/ with a database dump, the private, public and ext files and a
+# copy of .env, then deletes backups older than KEEP_DAYS (default 14). Usage: ./backup.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -15,6 +17,8 @@ docker compose exec -T db sh -c \
   | gzip > "$target/database.sql.gz"
 docker compose exec -T app tar -C /var/www/html --exclude=private/cache --exclude=private/tmp \
   -czf - private public ext > "$target/files.tar.gz"
+# CIVICRM_VERSION in it names the code the dump belongs to. COMPOSE_ENV_FILES is set by the tests.
+cp "${COMPOSE_ENV_FILES:-.env}" "$target/env"
 trap - ERR INT TERM
 
 find backups -mindepth 1 -maxdepth 1 -type d -mtime +"${KEEP_DAYS:-14}" -exec rm -rf {} +

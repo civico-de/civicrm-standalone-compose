@@ -1,4 +1,6 @@
 <?php
+// SPDX-FileCopyrightText: 2026 civico GmbH
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Test data for the event, contribution and api profiles. Prints what the test needs: IDs of
 // event, contribution page, processor, amount field and option, two self-service queries, and
 // the contact of the API user.

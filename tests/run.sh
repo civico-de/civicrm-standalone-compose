@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # End-to-end check on https://localhost:8443: install, language, cron, public routes, every
 # profile with an anonymous visitor, backup and restore. Removes its containers and volumes when done. Usage: tests/run.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
-export COMPOSE_PROJECT_NAME=civicrm-compose-test
+export COMPOSE_PROJECT_NAME=civicrm-standalone-compose-test
 export COMPOSE_FILE=compose.yaml:tests/compose.test.yaml
 export COMPOSE_ENV_FILES=tests/test.env
 base=https://localhost:8443
 failures=0
 backup=""
+body=$(mktemp)
+# The restore check edits tests/test.env; this copy puts it back whatever happens.
+settings=$(mktemp) && cp tests/test.env "$settings"
 
 cleanup() {
   docker compose down --volumes --remove-orphans >/dev/null 2>&1 || true
   [ -z "$backup" ] || rm -rf "$backup"
-  rm -f "$body"
+  cp "$settings" tests/test.env
+  rm -f "$body" "$settings"
 }
 trap cleanup EXIT
 docker compose down --volumes --remove-orphans > /dev/null 2>&1
@@ -44,7 +50,6 @@ submit_form() {
 }
 # Prints 1 when the request got past Caddy, whatever CiviCRM answered.
 reaches() { [ "$(route "$@")" != blocked ] && echo 1; }
-body=$(mktemp)
 count() { cv api4 "$1.get" "{\"select\":[\"id\"],\"where\":$2}" | grep -c '"id"' || true; }
 signups() { count Contact '[["source","=","test-signup"]]'; }
 
@@ -163,17 +168,21 @@ docker compose up --detach --wait caddy
 
 before=$(signups)
 backup=$(./backup.sh)
+check "the backup holds the settings" "" "$(diff "$backup/env" tests/test.env)"
 cv api4 Contact.create '{"values":{"contact_type":"Individual","first_name":"After","last_name":"Backup","source":"test-signup"}}' > /dev/null
-broken="$backup-broken" && mkdir "$broken" && cp "$backup/files.tar.gz" "$broken/"
+echo "# changed after the backup" >> tests/test.env
+broken="$backup-broken" && mkdir "$broken" && cp "$backup/files.tar.gz" "$backup/env" "$broken/"
 head -c 20000 "$backup/database.sql.gz" > "$broken/database.sql.gz"
 check "restore refuses a truncated backup" 1 "$(./restore.sh "$broken" > /dev/null 2>&1 || echo 1)"
 rm -rf "$broken"
 check "refused restore left the data alone" "$((before + 1))" "$(signups)"
-./restore.sh "$backup" > /dev/null
+check "refused restore left the settings alone" 1 "$(grep -c '^# changed after the backup$' tests/test.env)"
+read -r _ _ _ pre_restore_db _ pre_restore_env <<< "$(./restore.sh "$backup" | grep '^Before the restore: ')"
 check "restore returns to the backed-up state" "$before" "$(signups)"
-pre_restore=$(find backups -maxdepth 1 -name 'pre-restore-*.sql.gz' -newer "$backup/database.sql.gz")
-check "restore kept the replaced database" 1 "$(gunzip -c "$pre_restore" | grep -c 'Dump completed')"
-rm -f "$pre_restore"
+check "restore puts the backed-up settings back" "" "$(diff "$backup/env" tests/test.env)"
+check "restore kept the replaced database" 1 "$(gunzip -c "$pre_restore_db" | grep -c 'Dump completed')"
+check "restore kept the replaced settings" 1 "$(grep -c '^# changed after the backup$' "$pre_restore_env")"
+rm -f "$pre_restore_db" "$pre_restore_env"
 check "form page works after restore" 200 "$(route /civicrm/form/test-signup)"
 
 if [ "$failures" != 0 ]; then echo "$failures check(s) failed."; exit 1; fi

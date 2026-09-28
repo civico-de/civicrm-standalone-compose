@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Proposes newer image tags in compose.yaml and newer action versions. CIVICRM_VERSION lives in
+# .env.example and tests/test.env, which Dependabot does not read; the weekly "latest" test run covers it.
+version: 2
+updates:
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

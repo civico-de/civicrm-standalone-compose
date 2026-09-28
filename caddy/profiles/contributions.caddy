@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Contribution pages with their billing block, the state and county lists of address fields,
 # payment processor callbacks, and the links for managing a recurring contribution.
 @contributions path /civicrm/contribute/transact /civicrm/payment/form /civicrm/payment/ipn /civicrm/payment/ipn/* /civicrm/contribute/unsubscribe /civicrm/contribute/updatebilling /civicrm/contribute/updaterecur /civicrm/contribute/subscriptionstatus /civicrm/ajax/jqState /civicrm/ajax/jqCounty

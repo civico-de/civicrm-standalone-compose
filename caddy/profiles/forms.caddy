@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Public FormBuilder forms. Give a form a URL under civicrm/form/; it talks to CiviCRM
 # through these Afform APIv4 actions only.
 @forms path /civicrm/form/* /civicrm/ajax/api4/Afform/prefill /civicrm/ajax/api4/Afform/submit /civicrm/ajax/api4/Afform/submitFile

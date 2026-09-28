@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 civico GmbH
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Test overlay: local port, no clash with a web server on 80/443.
 services:
   caddy:
