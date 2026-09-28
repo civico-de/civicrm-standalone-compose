@@ -1,0 +1,6 @@
+# Links in sent mailings: click and open tracking, view in browser, unsubscribe, opt-out,
+# subscription confirmation, and the images of Mosaico templates.
+@civimail path /civicrm/mailing/url /civicrm/mailing/open /civicrm/mailing/view /civicrm/mailing/unsubscribe /civicrm/mailing/optout /civicrm/mailing/confirm /civicrm/mailing/resubscribe /civicrm/mosaico/img
+handle @civimail {
+	reverse_proxy app:80
+}

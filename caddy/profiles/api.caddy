@@ -1,0 +1,9 @@
+# APIv4 for other systems. Only requests with an "X-Civi-Auth: Bearer <API key>" header pass;
+# CiviCRM checks the key and runs the call with the permissions of the user it belongs to.
+@api {
+	path /civicrm/ajax/api4/*
+	header_regexp X-Civi-Auth "^Bearer [^ ]"
+}
+handle @api {
+	reverse_proxy app:80
+}

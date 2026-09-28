@@ -1,0 +1,6 @@
+# Event list, event pages with online registration, the calendar feed, the state and county
+# lists of address fields, and the mail links for confirming, cancelling or transferring.
+@events path /civicrm/event/list /civicrm/event/info /civicrm/event/register /civicrm/event/ical /civicrm/event/confirm /civicrm/event/selfsvcupdate /civicrm/event/selfsvctransfer /civicrm/ajax/jqState /civicrm/ajax/jqCounty
+handle @events {
+	reverse_proxy app:80
+}

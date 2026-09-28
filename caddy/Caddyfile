@@ -1,0 +1,29 @@
+# Public entry point. Anyone reaches the static files and the routes of the profiles named
+# in PUBLIC_PROFILES; everything else (login, back office, APIv3) answers only to ADMIN_IPS.
+{$DOMAIN} {
+	# Static files of core, extensions and uploads (never PHP), plus the scripts and
+	# styles CiviCRM generates for its pages; their parameters are signed.
+	@assets {
+		path /core/* /ext/* /public/*
+		not path_regexp (?i)\.(php|phtml|phar)(/|$)
+	}
+	@generated path /civicrm/asset/builder
+	handle @assets {
+		reverse_proxy app:80
+	}
+	handle @generated {
+		reverse_proxy app:80
+	}
+
+	# One import line per profile in PUBLIC_PROFILES, written when the container starts.
+	import /tmp/public-profiles.caddy
+
+	@admin remote_ip {$ADMIN_IPS}
+	handle @admin {
+		reverse_proxy app:80
+	}
+
+	handle {
+		respond "Forbidden" 403
+	}
+}

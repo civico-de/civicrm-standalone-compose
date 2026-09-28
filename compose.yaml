@@ -1,0 +1,111 @@
+# CiviCRM Standalone on the official images. Settings live in .env (see .env.example).
+
+x-civicrm: &civicrm
+  image: civicrm/civicrm:${CIVICRM_VERSION:?set CIVICRM_VERSION in .env}
+  restart: unless-stopped
+  environment:
+    CIVICRM_DB_HOST: db
+    CIVICRM_DB_PORT: 3306
+    CIVICRM_DB_NAME: civicrm
+    CIVICRM_DB_USER: civicrm
+    CIVICRM_DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    CIVICRM_UF_BASEURL: https://${DOMAIN:?set DOMAIN in .env}
+  volumes:
+    - private:/var/www/html/private
+    - public:/var/www/html/public
+    - ext:/var/www/html/ext
+    - ./apache/https.conf:/etc/apache2/conf-enabled/zz-https.conf:ro
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: civicrm
+      MARIADB_USER: civicrm
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 60
+
+  # Installs CiviCRM on the first start, then exits. Later starts see the settings file and skip.
+  init:
+    <<: *civicrm
+    restart: "no"
+    user: www-data
+    depends_on:
+      db:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        if [ -f private/civicrm.settings.php ]; then echo "CiviCRM is installed."; exit 0; fi
+        cv core:install \
+          --db="mysql://civicrm:$${CIVICRM_DB_PASSWORD}@db:3306/civicrm" \
+          --url="$${CIVICRM_UF_BASEURL}" \
+          --lang="$${INSTALL_LANG}" \
+          -m extras.adminUser="$${INSTALL_ADMIN_USER}" \
+          -m extras.adminPass="$${INSTALL_ADMIN_PASSWORD}" \
+          -m extras.adminEmail="$${INSTALL_ADMIN_EMAIL}"
+    environment:
+      CIVICRM_DB_PASSWORD: ${DB_PASSWORD}
+      CIVICRM_UF_BASEURL: https://${DOMAIN}
+      INSTALL_LANG: ${CIVICRM_LANG:?set CIVICRM_LANG in .env}
+      INSTALL_ADMIN_USER: ${ADMIN_USER:?set ADMIN_USER in .env}
+      INSTALL_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      INSTALL_ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
+
+  app:
+    <<: *civicrm
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  # CiviCRM's scheduled jobs (mailings, reminders, clean-up) every five minutes.
+  cron:
+    <<: *civicrm
+    user: www-data
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - while true; do if cv core:cron; then echo "cron run finished"; else echo "cron run failed" >&2; fi; sleep 300; done
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ADMIN_IPS: ${ADMIN_IPS:?set ADMIN_IPS in .env}
+      PUBLIC_PROFILES: ${PUBLIC_PROFILES?set PUBLIC_PROFILES in .env, empty for none}
+    volumes:
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    command:
+      - sh
+      - -ec
+      - |
+        for p in $$PUBLIC_PROFILES; do echo "import /etc/caddy/profiles/$$p.caddy"; done > /tmp/public-profiles.caddy
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+
+volumes:
+  db:
+  private:
+  public:
+  ext:
+  caddy_data:
+  caddy_config:

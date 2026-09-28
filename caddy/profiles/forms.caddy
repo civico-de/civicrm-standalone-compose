@@ -1,0 +1,6 @@
+# Public FormBuilder forms. Give a form a URL under civicrm/form/; it talks to CiviCRM
+# through these Afform APIv4 actions only.
+@forms path /civicrm/form/* /civicrm/ajax/api4/Afform/prefill /civicrm/ajax/api4/Afform/submit /civicrm/ajax/api4/Afform/submitFile
+handle @forms {
+	reverse_proxy app:80
+}

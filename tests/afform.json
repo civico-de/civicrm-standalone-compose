@@ -1,0 +1,12 @@
+{
+  "layoutFormat": "html",
+  "values": {
+    "name": "afformTestSignup",
+    "title": "Test signup",
+    "type": "form",
+    "server_route": "civicrm/form/test-signup",
+    "is_public": true,
+    "permission": ["*always allow*"],
+    "layout": "<af-form ctrl=\"afform\"><af-entity type=\"Individual\" name=\"Individual1\" label=\"Individual 1\" actions=\"{create: true, update: false}\" security=\"FBAC\" data=\"{contact_type: 'Individual', source: 'test-signup'}\" /><fieldset af-fieldset=\"Individual1\" class=\"af-container\"><af-field name=\"first_name\" /><af-field name=\"last_name\" /><div af-join=\"Email\" min=\"1\" max=\"1\"><af-field name=\"email\" /></div></fieldset><button class=\"af-button btn btn-primary\" crm-icon=\"fa-check\" ng-click=\"afform.submit()\">Submit</button></af-form>"
+  }
+}

@@ -1,0 +1,5 @@
+# Test overlay: local port, no clash with a web server on 80/443.
+services:
+  caddy:
+    ports: !override
+      - "127.0.0.1:8443:8443"
