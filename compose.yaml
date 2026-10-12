@@ -108,7 +108,10 @@ services:
       - sh
       - -ec
       - |
-        for p in $$PUBLIC_PROFILES; do echo "import /etc/caddy/profiles/$$p.caddy"; done > /tmp/public-profiles.caddy
+        for p in $$PUBLIC_PROFILES; do
+          [ -f "/etc/caddy/profiles/$$p.caddy" ] || { echo "PUBLIC_PROFILES: no profile named $$p in caddy/profiles/" >&2; exit 1; }
+          echo "import /etc/caddy/profiles/$$p.caddy"
+        done > /tmp/public-profiles.caddy
         exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
 
 volumes:

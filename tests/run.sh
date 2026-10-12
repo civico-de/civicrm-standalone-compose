@@ -173,9 +173,10 @@ check "contributions profile off: contribution pages are blocked" blocked "$(rou
 check "api profile off: the key gets nowhere" blocked "$(route /civicrm/ajax/api4/Event/get POST "$key")"
 PUBLIC_PROFILES='' docker compose up --detach --wait caddy
 check "no profiles: forms are blocked" blocked "$(route /civicrm/form/test-signup)"
-PUBLIC_PROFILES=nosuchprofile docker compose up --detach --wait --wait-timeout 15 caddy 2> /dev/null || true
-caddy_log=$(docker compose logs caddy)
-check "unknown profile stops Caddy" 1 "$(grep -q 'File to import not found: .*nosuchprofile.caddy' <<< "$caddy_log" && echo 1)"
+# A one-off run returns Caddy's exit code; under "up" the restart policy hides it.
+unknown=$(PUBLIC_PROFILES=nosuchprofile timeout 30 docker compose run --rm --no-deps -T caddy 2>&1 || echo "exit $?")
+check "unknown profile stops Caddy" "exit 1" "$(tail -1 <<< "$unknown")"
+check "unknown profile is named" 1 "$(grep -c '^PUBLIC_PROFILES: no profile named nosuchprofile in caddy/profiles/$' <<< "$unknown")"
 docker compose up --detach --wait caddy
 
 before=$(signups)
